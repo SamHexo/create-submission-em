@@ -1,0 +1,40 @@
+# Local testing files (don't copy to Docker image)
+test_agent_locally.py
+test_config.yaml
+test_config.yaml.example
+webhooks/
+workspace
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git (exclude .git repo but KEEP .gitignore - needed for workspace)
+.git/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary build files
+Dockerfile.generated
+validate_agent.py
+
+# Documentation
+README.md

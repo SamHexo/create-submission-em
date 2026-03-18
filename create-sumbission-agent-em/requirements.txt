@@ -1,0 +1,18 @@
+# Core agent dependencies
+httpx==0.28.1
+pydantic==2.10.5
+pyyaml==6.0.1
+
+# Data / grading
+pandas>=2.0.0
+scikit-learn>=1.3.0
+
+# ML basics
+numpy>=1.26.0
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+scipy>=1.11.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+tqdm>=4.65.0

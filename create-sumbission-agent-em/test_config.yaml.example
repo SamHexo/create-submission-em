@@ -1,0 +1,25 @@
+# Local test configuration for create-submission-agent-em
+# Copy this to test_config.yaml and fill in your values.
+
+EXPERIMENT_ID: "local-test-001"
+PROJECT_ID: "local-project"
+
+TASK_DESCRIPTION: "Run all workspace scripts and produce submission CSVs for ventilator-pressure-prediction"
+
+MAX_ITERATIONS: 10
+
+# Optional: override API keys (defaults to environment variables)
+# ANTHROPIC_API_KEY: "sk-ant-..."
+
+AGENT_CONFIG:
+  competition_id: "ventilator-pressure-prediction"
+
+  # Path to the training CSV. Defaults to workspace/train.csv if omitted.
+  # train_dataset_path: "workspace/train.csv"
+
+  # Extra args appended to every script invocation (optional).
+  # additional_args:
+  #   - "--epochs"
+  #   - "50"
+  #   - "--learning-rate"
+  #   - "0.001"
