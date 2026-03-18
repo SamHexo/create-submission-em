@@ -380,6 +380,9 @@ class CreateSubmissionAgentEmAgent(BaseAgent):
         timeout_per_script: Optional[int] = int(_timeout_raw) if _timeout_raw else None
         max_ram_gb: Optional[float] = self.agent_config.get("max_ram_gb")
         ram_check_interval: float = float(self.agent_config.get("ram_check_interval", 5.0))
+        # ram_check_interval: 0 ou max_ram_gb: 0 → monitoring désactivé
+        if not ram_check_interval:
+            max_ram_gb = None
         max_ram_bytes: Optional[int] = int(max_ram_gb * 1024 ** 3) if max_ram_gb else None
 
         workspace_dir = _get_workspace_dir()

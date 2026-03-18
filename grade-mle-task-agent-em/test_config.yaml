@@ -37,3 +37,9 @@ AGENT_CONFIG:
   additional_args:
     - "--epochs"
     - "5"
+    - "--kfold"
+    - "5"
+    - "--lr"
+    - "0.001"
+    - "--batch-size"
+    - "512"
