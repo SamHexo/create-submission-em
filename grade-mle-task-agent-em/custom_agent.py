@@ -428,16 +428,34 @@ class CreateSubmissionAgentEmAgent(BaseAgent):
         submissions_dir = _make_run_dir(f"submissions_{self.experiment_id}")
         grades_dir = _make_run_dir(f"grades_{self.experiment_id}")
 
-        only_files: Optional[List[str]] = self.agent_config.get("only_files")
+        _only_files_raw = self.agent_config.get("only_files")
+        # Accept both a single string and a list (YAML scalar vs sequence)
+        if isinstance(_only_files_raw, str):
+            only_files: Optional[List[str]] = [_only_files_raw] if _only_files_raw else None
+        elif isinstance(_only_files_raw, list):
+            only_files = _only_files_raw if _only_files_raw else None
+        else:
+            only_files = None
 
         # Extract any archives in code folder before iterating
         _extract_archives(code_folder)
 
         # Collect Python files in code folder (alphabetical = deterministic order)
+        available = [f.name for f in code_folder.glob("*.py") if f.is_file()]
+        print(f"Files in code folder after extraction: {sorted(available)}")
         if only_files:
-            python_files = [code_folder / f for f in only_files if (code_folder / f).exists()]
+            print(f"only_files filter: {only_files}")
+            python_files = []
+            for f in only_files:
+                p = code_folder / f
+                if p.is_file():
+                    python_files.append(p)
+                else:
+                    print(f"  WARNING: only_files entry '{f}' not found in {code_folder} — skipping")
+            print(f"Matched files: {[f.name for f in python_files]}")
         else:
-            python_files = sorted(code_folder.glob("*.py"))
+            python_files = sorted(p for p in code_folder.glob("*.py") if p.is_file())
+
 
         # Run at most max_steps scripts; stop when files are exhausted
         effective_steps = min(self.max_steps, len(python_files))

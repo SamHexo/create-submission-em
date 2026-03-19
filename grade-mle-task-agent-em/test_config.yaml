@@ -35,11 +35,13 @@ AGENT_CONFIG:
 
   # Extra args appended to every script invocation.
   additional_args:
-    - "--epochs"
-    - "5"
+    - "--gradient-steps"
+    - "100"
     - "--kfold"
     - "5"
     - "--lr"
     - "0.001"
     - "--batch-size"
     - "512"
+  only_files: 
+    - "family2_conv_hybrid_rnn_attn.py"
