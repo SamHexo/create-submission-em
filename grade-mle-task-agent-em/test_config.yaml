@@ -3,7 +3,7 @@ PROJECT_ID: "local-project"
 
 TASK_DESCRIPTION: "Run all workspace scripts and produce submission CSVs for ventilator-pressure-prediction"
 
-MAX_ITERATIONS: 10
+MAX_ITERATIONS: 100
 
 # Optional: override API keys (defaults to environment variables)
 # ANTHROPIC_API_KEY: "sk-ant-..."
@@ -13,35 +13,75 @@ AGENT_CONFIG:
 
   # Folder containing the scripts to run (one script = one step).
   # Absolute path, or relative to the agent script.
-  # Defaults to workspace/codes if omitted.
-  code_folder_path: "workspace/codes"
+  # Default: "workspace/codes"
+  code_folder_path: "workspace/codes/mlevolve-exp_9D9vwMiwR6C9lBLiN0TSpQ-reformated"
 
-  # Path to the training CSV. Defaults to workspace/train.csv if omitted.
+  # Path to the training CSV.
+  # Default: "workspace/train.csv"
   train_dataset_path: "workspace/data/train_2b.csv"
 
-  # Parallelisme : nb de scripts lancés simultanément.
-  # Mettre = nb de GPUs disponibles. Chaque subprocess reçoit son propre GPU (CUDA_VISIBLE_DEVICES).
-  # parallelism: 1
+  # Nb de scripts lancés simultanément. Mettre = nb de GPUs disponibles.
+  # Ignoré si checkpoint_steps est activé.
+  # Default: 1
+  parallelism: 3
 
-  # Timeout par script en secondes. Le process est kill si dépassé.
+  # Timeout par script en secondes. 0 = désactivé.
+  # Default: 7200
   # timeout_per_script: 7200
 
-  # Kill le script si sa RAM (RSS + enfants) dépasse N Go.
+  # Kill le script si sa RAM (RSS + enfants) dépasse N Go. 0 = désactivé.
   # Voir README pour les valeurs recommandées par instance Emily.
+  # Default: null (désactivé)
   # max_ram_gb: 50
 
-  # Fréquence de polling RAM en secondes (défaut: 5).
+  # Fréquence de polling RAM en secondes. 0 = désactive le monitoring RAM.
+  # Default: 5.0
   # ram_check_interval: 5.0
 
+  # Filtre : seuls ces fichiers sont exécutés (dans l'ordre donné).
+  # Accepte une string ou une liste. null = tous les fichiers.
+  # Default: null
+  #only_files:
+  #  - "family2_conv_hybrid_rnn_attn.py"
+
+  # Checkpoints complets : submission CSV + grade + step Emily à chaque valeur.
+  # --gradient-steps dans additional_args est ignoré si checkpoint_steps est activé.
+  # Default: null
+  checkpoint_steps:
+    - 100
+    - 500
+    - 1000
+
+  checkpoint_order: "by_step" # always by step if parallelism > 1
+  # Patience check : val score seulement (pas de submission, pas de grade) toutes les N steps.
+  # Va jusqu'au dernier checkpoint_steps, ou jusqu'à --gradient-steps si checkpoint_steps est null
+  # (dans ce cas le step final est traité comme un full checkpoint).
+  # Default: null
+  patience_every: 1000
+
+  # Early stopping : arrête un script si pas d'amélioration du val score
+  # pendant N checks consécutifs (patience checks ou full checkpoints).
+  # Default: null (désactivé)
+  early_stopping_patience: 3
+
+  # Ordre d'exécution des checkpoints.
+  # "by_script" (défaut) : boucle externe = scripts, interne = steps.
+  #   Chaque script tourne tous ses steps avant de passer au suivant.
+  #   Compatible avec parallelism > 1.
+  # "by_step" : boucle externe = steps, interne = scripts (séquentiel).
+  #   Tous les scripts tournent au step N avant de passer au step N+1.
+  #   Permet de comparer tous les scripts au même niveau avant de continuer.
+  # Default: "by_script"
+  # checkpoint_order: "by_script"
+
   # Extra args appended to every script invocation.
+  # --gradient-steps est ignoré si checkpoint_steps est activé.
   additional_args:
     - "--gradient-steps"
     - "100"
     - "--kfold"
-    - "5"
+    - "2"
     - "--lr"
     - "0.001"
     - "--batch-size"
     - "512"
-  only_files: 
-    - "family2_conv_hybrid_rnn_attn.py"
