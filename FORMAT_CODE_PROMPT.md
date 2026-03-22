@@ -207,6 +207,22 @@ The value must be the **validation MAE** (lower is better), computed on the held
 
 ---
 
+### Docker compatibility
+
+Always set `num_workers=0` on every `DataLoader`. The scripts run inside Docker containers where `/dev/shm` is limited (64 MB by default); DataLoader workers use shared memory to transfer tensors and will crash with a Bus error if `num_workers > 0`.
+
+Always add `weights_only=False` to every `torch.load` call. PyTorch 2.6 changed the default to `True`, which rejects checkpoints containing numpy arrays.
+
+```python
+torch.load(path, map_location=device, weights_only=False)
+```
+
+```python
+DataLoader(..., num_workers=0)
+```
+
+---
+
 ### What you must NOT do
 
 - Change the algorithm or model used
