@@ -515,6 +515,37 @@ class CreateSubmissionAgentEmAgent(BaseAgent):
         submissions_dir = _make_run_dir(f"submissions_{self.experiment_id}")
         grades_dir = _make_run_dir(f"grades_{self.experiment_id}")
 
+        _run_start_time = datetime.utcnow().isoformat()
+        _train_dataset_size: Optional[int] = None
+        _train_n_sequences: Optional[int] = None  # unique breath_ids if sequence model, else None
+        try:
+            with open(train_dataset_path, "rb") as _f:
+                _train_dataset_size = sum(1 for _ in _f) - 1  # subtract header row
+        except Exception:
+            pass
+        try:
+            import pandas as _pd
+            _df_head = _pd.read_csv(train_dataset_path, nrows=0)
+            if "breath_id" in _df_head.columns:
+                _breath_col = _pd.read_csv(train_dataset_path, usecols=["breath_id"])
+                _train_n_sequences = int(_breath_col["breath_id"].nunique())
+        except Exception:
+            pass
+        _run_info = {
+            "experiment_id": self.experiment_id,
+            "start_time": _run_start_time,
+            "train_dataset_path": str(train_dataset_path),
+            "train_dataset_size": _train_dataset_size,
+            "train_n_sequences": _train_n_sequences,
+            "additional_args": [str(a) for a in additional_args],
+            "checkpoint_steps": sorted(checkpoint_steps_set) if checkpoint_steps_set else None,
+            "patience_every": _patience_every_int,
+            "early_stopping_patience": early_stopping_patience,
+            "parallelism": parallelism,
+            "checkpoint_order": checkpoint_order,
+        }
+        (grades_dir / "run_info.json").write_text(json.dumps(_run_info, indent=2))
+
         _only_files_raw = self.agent_config.get("only_files")
         # Accept both a single string and a list (YAML scalar vs sequence)
         if isinstance(_only_files_raw, str):
@@ -704,6 +735,16 @@ class CreateSubmissionAgentEmAgent(BaseAgent):
                                 if run_error:
                                     print(f"  ERROR: {run_error}")
                             if not is_full:
+                                _p_path = grades_dir / f"metric_{py_file.stem}_patience_step{ckpt_step}.json"
+                                _p_path.write_text(json.dumps({
+                                    "python_file": str(py_file),
+                                    "gradient_steps": ckpt_step,
+                                    "val_score": val_score,
+                                    "execution_time_seconds": elapsed_seconds,
+                                    "error": run_error,
+                                    "is_patience_only": True,
+                                    "cmd": cmd,
+                                }, indent=2))
                                 continue
                             observation_lines = [f"$ {' '.join(cmd)}\n"]
                             error_msg: Optional[str] = run_error
@@ -749,9 +790,11 @@ class CreateSubmissionAgentEmAgent(BaseAgent):
                                 "python_file": str(py_file),
                                 "gradient_steps": ckpt_step,
                                 "submission_file": str(submission_path) if submission_path and submission_path.exists() else None,
-                                "score": score, "format_valid": format_valid, "grade_message": grade_msg,
+                                "score": score, "val_score": val_score,
+                                "format_valid": format_valid, "grade_message": grade_msg,
                                 "execution_time_seconds": elapsed_seconds, "error": error_msg,
                                 "early_stopped": early_stopped,
+                                "cmd": cmd,
                             }
                             grades_path = grades_dir / f"metric_{py_file.stem}_step{ckpt_step}.json"
                             grades_path.write_text(json.dumps(grades_entry, indent=2))
@@ -886,6 +929,16 @@ class CreateSubmissionAgentEmAgent(BaseAgent):
                                 if early_stopped:
                                     _bs_stopped[py_file] = True
                                 if not is_full:
+                                    _p_path = grades_dir / f"metric_{py_file.stem}_patience_step{ckpt_step}.json"
+                                    _p_path.write_text(json.dumps({
+                                        "python_file": str(py_file),
+                                        "gradient_steps": ckpt_step,
+                                        "val_score": val_score,
+                                        "execution_time_seconds": elapsed_seconds,
+                                        "error": run_error,
+                                        "is_patience_only": True,
+                                        "cmd": cmd,
+                                    }, indent=2))
                                     return
                                 observation_lines = [f"$ {' '.join(cmd)}\n"]
                                 error_msg: Optional[str] = run_error
@@ -931,9 +984,11 @@ class CreateSubmissionAgentEmAgent(BaseAgent):
                                     "python_file": str(py_file),
                                     "gradient_steps": ckpt_step,
                                     "submission_file": str(submission_path) if submission_path and submission_path.exists() else None,
-                                    "score": score, "format_valid": format_valid, "grade_message": grade_msg,
+                                    "score": score, "val_score": val_score,
+                                    "format_valid": format_valid, "grade_message": grade_msg,
                                     "execution_time_seconds": elapsed_seconds, "error": error_msg,
                                     "early_stopped": early_stopped,
+                                    "cmd": cmd,
                                 }
                                 grades_path = grades_dir / f"metric_{py_file.stem}_step{ckpt_step}.json"
                                 grades_path.write_text(json.dumps(grades_entry, indent=2))
@@ -1100,6 +1155,7 @@ class CreateSubmissionAgentEmAgent(BaseAgent):
                         "grade_message": grade_msg,
                         "execution_time_seconds": elapsed_seconds,
                         "error": error_msg,
+                        "cmd": cmd,
                     }
                     grades_path = grades_dir / f"metric_{py_file.stem}.json"
                     grades_path.write_text(json.dumps(grades_entry, indent=2))
@@ -1133,6 +1189,12 @@ class CreateSubmissionAgentEmAgent(BaseAgent):
                     )
 
                     self.current_step = max(self.current_step, step)
+
+        # Update run_info with end time and best result
+        _run_info["end_time"] = datetime.utcnow().isoformat()
+        _run_info["best_score"] = best_score
+        _run_info["best_script"] = best_script
+        (grades_dir / "run_info.json").write_text(json.dumps(_run_info, indent=2))
 
         # Final result
         await self.send_experiment_completed(
