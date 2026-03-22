@@ -42,8 +42,8 @@ AGENT_CONFIG:
   # Filtre : seuls ces fichiers sont exécutés (dans l'ordre donné).
   # Accepte une string ou une liste. null = tous les fichiers.
   # Default: null
-  #only_files:
-  #  - "family2_conv_hybrid_rnn_attn.py"
+  only_files:
+    - "branch2_best_step250_mae0.560.py"
 
   # Checkpoints complets : submission CSV + grade + step Emily à chaque valeur.
   # --gradient-steps dans additional_args est ignoré si checkpoint_steps est activé.
@@ -58,7 +58,7 @@ AGENT_CONFIG:
   # Va jusqu'au dernier checkpoint_steps, ou jusqu'à --gradient-steps si checkpoint_steps est null
   # (dans ce cas le step final est traité comme un full checkpoint).
   # Default: null
-  patience_every: 1000
+  patience_every: 100
 
   # Early stopping : arrête un script si pas d'amélioration du val score
   # pendant N checks consécutifs (patience checks ou full checkpoints).

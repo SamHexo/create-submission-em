@@ -688,6 +688,7 @@ class CreateSubmissionAgentEmAgent(BaseAgent):
                                 "--test-dataset-path", str(test_dataset_path),
                                 "--gradient-steps", str(ckpt_step),
                                 "--checkpoint-path", str(checkpoint_path),
+                                "--final-gradient-steps", str(max_step),
                             ] + filtered_additional_args
                             if is_full:
                                 global_step += 1
@@ -878,6 +879,7 @@ class CreateSubmissionAgentEmAgent(BaseAgent):
                                     "--test-dataset-path", str(test_dataset_path),
                                     "--gradient-steps", str(ckpt_step),
                                     "--checkpoint-path", str(checkpoint_path),
+                                    "--final-gradient-steps", str(_bs_max),
                                 ] + filtered_additional_args
                                 if is_full:
                                     global_step += 1

@@ -116,9 +116,12 @@ The agent calls the same script multiple times with increasing `--gradient-steps
 #### Arguments
 
 ```python
-parser.add_argument("--gradient-steps", type=int, default=<current_value>)
-parser.add_argument("--checkpoint-path", required=False, type=Path, default=None)
+parser.add_argument("--gradient-steps",       type=int, default=<current_value>)
+parser.add_argument("--checkpoint-path",       required=False, type=Path, default=None)
+parser.add_argument("--final-gradient-steps",  required=False, type=int, default=None)
 ```
+
+> `--final-gradient-steps` is the total number of steps for the full training run (e.g. the last value in `checkpoint_steps`). The agent always passes it. It is used to fix the scheduler curve so the same OneCycleLR / CosineAnnealingLR shape is shared across all incremental runs.
 
 #### What to save
 
@@ -152,18 +155,23 @@ torch.save({
 #### What to load on resume — scheduler rule
 
 **Always load** model state and optimizer state (preserves weights and momentum/LR).
-**Never load** scheduler state: the scheduler is recreated fresh with `total_steps = args.gradient_steps`. This correctly handles incremental runs where `--gradient-steps` increases between calls.
+**Load scheduler state** if and only if `--final-gradient-steps` is provided: in that case `total_steps` is the same across all runs, so the saved state is compatible.
 
 ```python
+_total_steps = args.final_gradient_steps or args.gradient_steps
+scheduler = OneCycleLR(optimizer, max_lr=<max_lr>, total_steps=_total_steps, pct_start=0.2)
+# (or CosineAnnealingLR(optimizer, T_max=_total_steps, eta_min=1e-5))
+
 if args.checkpoint_path and args.checkpoint_path.exists():
-    ckpt = torch.load(args.checkpoint_path, map_location=device)
+    ckpt = torch.load(args.checkpoint_path, map_location=device, weights_only=False)
     model.load_state_dict(ckpt["model_state"])
     optimizer.load_state_dict(ckpt["optimizer_state"])
-    # scheduler not restored: recreated with new total_steps for incremental resume
+    if args.final_gradient_steps and "scheduler_state" in ckpt:
+        scheduler.load_state_dict(ckpt["scheduler_state"])
     start_step = ckpt["completed_steps"]
 ```
 
-> **Why not the scheduler?** Schedulers like `OneCycleLR` have a fixed shape tied to `total_steps`. Loading a state saved for 1 000 steps into a scheduler created for 5 000 steps produces a corrupted LR curve. Instead, let the scheduler restart its curve over the remaining steps — the LR from the optimizer state is already correct, so the first few steps are a minor warmup perturbation, negligible for long runs.
+> **Why `final_gradient_steps`?** Schedulers like `OneCycleLR` have a fixed shape tied to `total_steps`. If each incremental run recreates the scheduler with `total_steps = gradient_steps` (which changes each run), the LR curve restarts from scratch at every resume — causing val score to degrade while grade may still improve, making early stopping unreliable. By fixing `total_steps = final_gradient_steps` (constant across all runs), the scheduler state is always compatible and the LR curve is coherent across the full training.
 
 #### Incremental resume for KFold scripts
 
@@ -189,7 +197,8 @@ for fold in range(args.kfold):
     if fold in fold_states:
         model.load_state_dict(fold_states[fold]["model_state"])
         optimizer.load_state_dict(fold_states[fold]["optimizer_state"])
-        # do NOT load scheduler_state
+        if args.final_gradient_steps and "scheduler_state" in fold_states[fold]:
+            scheduler.load_state_dict(fold_states[fold]["scheduler_state"])
     step = start_step
     while step < args.gradient_steps:
         ...
