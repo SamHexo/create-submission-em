@@ -735,6 +735,8 @@ class CreateSubmissionAgentEmAgent(BaseAgent):
                                 print(f"  [{check_type_label}] step={ckpt_step}, val=N/A (could not parse), elapsed={elapsed_seconds}s")
                                 if run_error:
                                     print(f"  ERROR: {run_error}")
+                            if run_error is None and returncode != 0:
+                                run_error = f"Script exited with code {returncode}"
                             if not is_full:
                                 _p_path = grades_dir / f"metric_{py_file.stem}_patience_step{ckpt_step}.json"
                                 _p_path.write_text(json.dumps({
@@ -761,8 +763,6 @@ class CreateSubmissionAgentEmAgent(BaseAgent):
                                 if stderr and stderr.strip():
                                     observation_lines.append(f"[stderr]\n{stderr.strip()}")
                                 observation_lines.append(f"\nExit code: {returncode}  ({elapsed_seconds}s)")
-                                if returncode != 0:
-                                    error_msg = f"Script exited with code {returncode}"
                             else:
                                 observation_lines.append(f"ERROR: {run_error}  ({elapsed_seconds}s)")
                             format_valid = False
@@ -926,6 +926,8 @@ class CreateSubmissionAgentEmAgent(BaseAgent):
                                     print(f"  [{check_type_label}] step={ckpt_step}, val=N/A (could not parse), elapsed={elapsed_seconds}s")
                                     if run_error:
                                         print(f"  ERROR: {run_error}")
+                                if run_error is None and returncode != 0:
+                                    run_error = f"Script exited with code {returncode}"
                                 _bs_best_val[py_file] = best_ckpt_val
                                 _bs_patience[py_file] = patience_counter
                                 if early_stopped:
